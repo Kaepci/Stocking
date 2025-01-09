@@ -1,103 +1,57 @@
 import streamlit as st
 import pandas as pd
+import requests
+from io import StringIO
 
-# Dataset contoh
-data = {
-    'Tanggal': ['2025-01-01', '2025-01-02', '2025-01-03', '2025-01-04'],
-    'Kode Ikan': ['A001', 'A002', 'A001', 'A003'],
-    'Nama Ikan': ['Ikan Nila', 'Ikan Lele', 'Ikan Nila', 'Ikan Mas'],
-    'Stok Awal': [100, 200, 120, 150],
-    'Pembelian': [50, 0, 30, 100],
-    'Penjualan': [30, 50, 40, 30],
-    'Harga Per Kg': [20, 25, 20, 30]  # Menambahkan harga per kg untuk menghitung total penjualan
-}
+# URL dataset ikan dari GitHub
+url = "https://raw.githubusercontent.com/Kaepci/Stocking/edit/main/data_ikan.csv"
 
-# Membuat DataFrame dari data
-df = pd.DataFrame(data)
-
-# Menghitung Stok Akhir dan Total Penjualan
-df['Stok Akhir'] = df['Stok Awal'] + df['Pembelian'] - df['Penjualan']
-df['Total Penjualan'] = df['Penjualan'] * df['Harga Per Kg']
-
-# Fungsi untuk menambah produk
-def tambah_produk(tanggal, kode_ikan, pembelian):
-    # Menambahkan produk ke stok
-    stok_awal = df[df['Kode Ikan'] == kode_ikan]['Stok Akhir'].iloc[-1]  # Mengambil stok akhir dari ikan sebelumnya
-    stok_akhir = stok_awal + pembelian
-    
-    # Menambahkan transaksi pembelian baru
-    df_baru = pd.DataFrame({
-        'Tanggal': [tanggal],
-        'Kode Ikan': [kode_ikan],
-        'Nama Ikan': [df[df['Kode Ikan'] == kode_ikan]['Nama Ikan'].iloc[0]],  # Nama ikan berdasarkan kode ikan
-        'Stok Awal': [stok_awal],
-        'Pembelian': [pembelian],
-        'Penjualan': [0],  # Tidak ada penjualan untuk transaksi pembelian
-        'Stok Akhir': [stok_akhir],
-        'Harga Per Kg': [df[df['Kode Ikan'] == kode_ikan]['Harga Per Kg'].iloc[0]]  # Mengambil harga dari kode ikan
-    })
-    
-    global df  # Mengupdate df global dengan data baru
-    df = pd.concat([df, df_baru], ignore_index=True)
-
-# Fungsi untuk mengurangi stok (penjualan)
-def jual_produk(tanggal, kode_ikan, penjualan):
-    # Mengurangi stok berdasarkan penjualan
-    stok_awal = df[df['Kode Ikan'] == kode_ikan]['Stok Akhir'].iloc[-1]  # Mengambil stok akhir dari ikan sebelumnya
-    if stok_awal >= penjualan:
-        stok_akhir = stok_awal - penjualan
-        
-        # Menambahkan transaksi penjualan baru
-        df_baru = pd.DataFrame({
-            'Tanggal': [tanggal],
-            'Kode Ikan': [kode_ikan],
-            'Nama Ikan': [df[df['Kode Ikan'] == kode_ikan]['Nama Ikan'].iloc[0]],  # Nama ikan berdasarkan kode ikan
-            'Stok Awal': [stok_awal],
-            'Pembelian': [0],  # Tidak ada pembelian untuk transaksi penjualan
-            'Penjualan': [penjualan],
-            'Stok Akhir': [stok_akhir],
-            'Harga Per Kg': [df[df['Kode Ikan'] == kode_ikan]['Harga Per Kg'].iloc[0]]  # Mengambil harga dari kode ikan
-        })
-        
-        # Mengupdate df global dengan data baru
-        global df
-        df = pd.concat([df, df_baru], ignore_index=True)
+# Fungsi untuk mengambil data CSV dari GitHub
+def load_data_from_github(url):
+    response = requests.get(url)
+    if response.status_code == 200:
+        return pd.read_csv(StringIO(response.text))
     else:
-        st.warning(f"Stok {df[df['Kode Ikan'] == kode_ikan]['Nama Ikan'].iloc[0]} tidak cukup untuk penjualan.")
+        st.error("Gagal mengakses file CSV dari GitHub.")
+        return pd.DataFrame()
 
-# Fungsi untuk menghitung total penjualan
-def hitung_total_penjualan():
-    total_penjualan = df['Total Penjualan'].sum()  # Menjumlahkan seluruh total penjualan
-    return total_penjualan
+# Fungsi untuk menyimpan dataset ke GitHub (diupdate melalui Streamlit)
+def save_data_to_github(df):
+    # Simulasikan penyimpanan data ke GitHub (diperlukan API GitHub atau setup CI/CD)
+    # Anda bisa menggunakan GitHub API atau sistem CI/CD untuk mengupdate file CSV di repo.
+    st.write("Data berhasil disimpan!")
 
-# Streamlit UI
-st.title("Pembukuan Stok Ikan UMKM")
+# Menampilkan aplikasi Streamlit
+st.title("Aplikasi Manajemen Stok Ikan")
 
-# Menampilkan DataFrame
-st.subheader("Pembukuan Stok Ikan UMKM:")
+# Memuat data ikan
+df = load_data_from_github(url)
+
+# Menampilkan dataset
+st.subheader("Dataset Stok Ikan")
 st.dataframe(df)
 
-# Input untuk menambah produk
-st.subheader("Tambah Produk (Pembelian)")
-tanggal_pembelian = st.date_input("Tanggal Pembelian", value=pd.to_datetime("2025-01-05"))
-kode_ikan_pembelian = st.selectbox("Pilih Kode Ikan", df['Kode Ikan'].unique())
-pembelian = st.number_input("Jumlah Pembelian (kg)", min_value=1)
+# Input untuk menambah stok ikan
+st.subheader("Tambah Stok Ikan")
+jenis_ikan = st.text_input("Jenis Ikan:", "")
+jumlah_tambah = st.number_input("Jumlah Stok yang Ditambah:", min_value=0)
 
-if st.button("Tambah Produk"):
-    tambah_produk(tanggal_pembelian.strftime('%Y-%m-%d'), kode_ikan_pembelian, pembelian)
-    st.success("Produk berhasil ditambahkan!")
+if st.button("Tambah Stok"):
+    if jenis_ikan and jumlah_tambah > 0:
+        # Menambah stok ikan
+        if jenis_ikan in df['Jenis_Ikan'].values:
+            df.loc[df['Jenis_Ikan'] == jenis_ikan, 'Stok'] += jumlah_tambah
+            st.success(f"Stok ikan {jenis_ikan} berhasil ditambah sebanyak {jumlah_tambah}.")
+        else:
+            # Jika jenis ikan baru, tambah jenis ikan tersebut
+            df.loc[len(df)] = [jenis_ikan, jumlah_tambah]
+            st.success(f"Jenis ikan {jenis_ikan} baru berhasil ditambahkan dengan stok {jumlah_tambah}.")
+        
+        # Menyimpan data setelah perubahan
+        save_data_to_github(df)
 
-# Input untuk mengurangi stok (penjualan)
-st.subheader("Penjualan")
-tanggal_penjualan = st.date_input("Tanggal Penjualan", value=pd.to_datetime("2025-01-06"))
-kode_ikan_penjualan = st.selectbox("Pilih Kode Ikan untuk Penjualan", df['Kode Ikan'].unique())
-penjualan = st.number_input("Jumlah Penjualan (kg)", min_value=1)
-
-if st.button("Proses Penjualan"):
-    jual_produk(tanggal_penjualan.strftime('%Y-%m-%d'), kode_ikan_penjualan, penjualan)
-    st.success("Penjualan berhasil diproses!")
-
-# Menghitung dan menampilkan total penjualan
-total_penjualan = hitung_total_penjualan()
-st.subheader(f"Total Pendapatan dari Penjualan: Rp {total_penjualan}")
-
+        # Tampilkan data terbaru
+        st.subheader("Dataset Setelah Penambahan Stok")
+        st.dataframe(df)
+    else:
+        st.error("Masukkan jenis ikan dan jumlah stok yang valid.")

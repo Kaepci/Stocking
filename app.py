@@ -4,7 +4,7 @@ import requests
 from io import StringIO
 
 # URL dataset ikan dari GitHub
-url = "https://raw.githubusercontent.com/Kaepci/Stocking/edit/main/data_ikan.csv"
+url = "https://github.com/Kaepci/Stocking/main/data_ikan.csv"
 
 # Fungsi untuk mengambil data CSV dari GitHub
 def load_data_from_github(url):
